@@ -1,0 +1,13 @@
+[Unit]
+Description=Hoop Agent {{ hoop_agent_name }}
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/hoop run --name {{ hoop_agent_name }} --command '{{ hoop_command }}'
+Restart=always
+RestartSec=5
+User={{ hoop_user }}
+Environment=HOOP_KEY={{ hoop_key }}
+
+[Install]
+WantedBy=multi-user.target

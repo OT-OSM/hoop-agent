@@ -1,0 +1,22 @@
+---
+- name: Install Hoop CLI
+  ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
+  args:
+    creates: /usr/local/bin/hoop
+
+- name: Create systemd service for {{ hoop_service_name }}
+  template:
+    src: hoop-agent.service.j2
+    dest: /etc/systemd/system/{{ hoop_service_name }}.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Restart hoop agent service
+
+- name: Enable and start {{ hoop_service_name }}
+  ansible.builtin.systemd:
+    name: "{{ hoop_service_name }}"
+    enabled: yes
+    state: started

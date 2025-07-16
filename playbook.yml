@@ -1,0 +1,5 @@
+---
+- hosts: hoop-agent
+  become: true
+  roles:
+    - hoop-agent

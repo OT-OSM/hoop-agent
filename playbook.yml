@@ -1,5 +1,10 @@
----
-- hosts: hoop-agent
-  become: true
+- name: Deploy Hoop Dummy Agent
+  hosts: all
+  become: yes
+  vars:
+    hoop_agent_name: "{{ inventory_hostname }}"
+    hoop_command: "bash"
+    hoop_key: "grpc://_default:xagt-RS_Lb3OBD3A-JfVfYGyffUtfc9xfyytrTmJzpt3sZpw@identity.opstree.dev:8010"
+    hoop_service_name: "hoop-dummy-agent"
   roles:
     - hoop-agent

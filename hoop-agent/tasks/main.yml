@@ -1,22 +1,37 @@
----
 - name: Install Hoop CLI
   ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
   args:
     creates: /usr/local/bin/hoop
 
-- name: Create systemd service for {{ hoop_service_name }}
-  template:
-    src: hoop-agent.service.j2
-    dest: /etc/systemd/system/{{ hoop_service_name }}.service
-    owner: root
-    group: root
-    mode: '0644'
-  notify:
-    - Reload systemd
-    - Restart hoop agent service
+- name: Configure Hoop CLI
+  ansible.builtin.shell: |
+    HOOP_TOKEN="{{ hoop_token }}" hoop config create --api-url https://identity.opstree.dev
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
 
-- name: Enable and start {{ hoop_service_name }}
-  ansible.builtin.systemd:
-    name: "{{ hoop_service_name }}"
-    enabled: yes
-    state: started
+- name: Create Hoop Agent
+  ansible.builtin.shell: |
+    hoop admin create agent {{ inventory_hostname }}
+  register: agent_create
+
+- name: Extract HOOP_KEY from agent creation output
+  ansible.builtin.set_fact:
+    hoop_key: "{{ agent_create.stdout_lines | select('search', '^grpc') | list | first }}"
+
+- name: Create systemd service with HOOP_KEY
+  ansible.builtin.template:
+    src: hoop-agent.service.j2
+    dest: /etc/systemd/system/hoop-agent.service
+  notify: Reload systemd
+
+- name: Create connection using hostname and agent
+  ansible.builtin.shell: |
+    export HOOP_KEY={{ hoop_key }}
+    hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} --tags ldc={{ inventory_hostname }} -- bash
+  environment:
+    HOOP_KEY: "{{ hoop_key }}"
+
+- name: Start the Hoop Agent
+  ansible.builtin.shell: |
+    export HOOP_KEY={{ hoop_key }}
+    hoop start agent &

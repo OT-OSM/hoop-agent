@@ -29,11 +29,7 @@
 - name: Create connection using hostname and agent
   ansible.builtin.shell: |
     export HOOP_KEY={{ hoop_key }}
-    hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} --tags ldc={{ inventory_hostname }} -- bash
+    hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} \
+      --tags ldc={{ inventory_hostname }},Name={{ inventory_hostname }},Owner=opstree,Environment=prod -- bash
   environment:
     HOOP_KEY: "{{ hoop_key }}"
-
-# - name: Start the Hoop Agent
-#   ansible.builtin.shell: |
-#     export HOOP_KEY={{ hoop_key }}
-#     hoop start agent &

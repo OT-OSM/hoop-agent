@@ -22,7 +22,9 @@
   ansible.builtin.template:
     src: hoop-agent.service.j2
     dest: /etc/systemd/system/hoop-agent.service
-  notify: Reload systemd
+  notify: 
+    - Reload systemd
+    - Enable and start Hoop agent
 
 - name: Create connection using hostname and agent
   ansible.builtin.shell: |
@@ -31,7 +33,7 @@
   environment:
     HOOP_KEY: "{{ hoop_key }}"
 
-- name: Start the Hoop Agent
-  ansible.builtin.shell: |
-    export HOOP_KEY={{ hoop_key }}
-    hoop start agent &
+# - name: Start the Hoop Agent
+#   ansible.builtin.shell: |
+#     export HOOP_KEY={{ hoop_key }}
+#     hoop start agent &

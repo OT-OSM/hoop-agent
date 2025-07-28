@@ -1,9 +1,0 @@
-# Default values (can be overridden)
-hoop_api_base_url: "https://identity.opstree.dev/api"
-hoop_group_name: "engineering"
-hoop_user_email: "pritam.kondapratiwar@opstree.com"
-hoop_user_name: "pritam"
-hoop_user_password: "mysecurepassword"
-hoop_user_groups:
-  - "coe-team"
-hoop_token: ""

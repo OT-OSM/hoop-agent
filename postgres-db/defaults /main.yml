@@ -1,0 +1,10 @@
+hoop_agent_name: "{{ ansible_hostname }}-dummy-agent"
+hoop_command: "bash"
+hoop_key: "grpc://_default:xagt-REPLACE_ME@identity.opstree.dev:8010"
+hoop_user: "root"
+hoop_service_name: "hoop-agent"
+db_host: 127.0.0.1
+db_port: 5432
+db_user: postgres
+db_pass: secretpass
+db_name: mydb

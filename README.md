@@ -1,4 +1,4 @@
-# 🎯 Ansible Role: Hoop Agent Setup
+# 🎯 Ansible Role: Hoop Connection Setup for mysql
 
 This Ansible role automates the installation and configuration of the [Hoop CLI](https://hoop.dev) and registers a database connection securely. It ensures secure management of database credentials using `ansible-vault`.
 ---

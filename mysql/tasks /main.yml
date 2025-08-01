@@ -1,0 +1,47 @@
+- name: Install Hoop CLI
+  ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
+  args:
+    creates: /usr/local/bin/hoop
+
+- name: Configure Hoop CLI
+  ansible.builtin.shell: |
+    HOOP_TOKEN="{{ hoop_token }}" hoop config create --api-url https://identity.opstree.dev
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+
+- name: Check if Hoop Agent already exists
+  ansible.builtin.shell: |
+    hoop admin list agents | grep -w {{ inventory_hostname }}
+  register: agent_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Hoop Agent if it does not exist
+  ansible.builtin.shell: |
+    hoop admin create agent {{ inventory_hostname }}
+  when: agent_check.rc != 0
+  register: agent_create
+
+- name: Extract HOOP_KEY from agent creation output
+  ansible.builtin.set_fact:
+    hoop_key: "{{ agent_create.stdout_lines | select('search', '^grpc') | list | first }}"
+
+- name: Create systemd service with HOOP_KEY
+  ansible.builtin.template:
+    src: hoop-agent.service.j2
+    dest: /etc/systemd/system/hoop-agent.service
+  notify: 
+    - Reload systemd
+    - Enable and start Hoop agent
+
+- name: Create DB connection using Hoop CLI
+  ansible.builtin.shell: |
+    export HOOP_KEY={{ hoop_key }}
+    hoop admin create connection {{ inventory_hostname }} --type mysql -a {{ inventory_hostname }} \
+      -e HOST={{ db_host }} \
+      -e PORT={{ db_port }} \
+      -e USER={{ db_user }} \
+      -e PASS={{ db_pass }} \
+      -e DB={{ db_name }}
+  environment:
+    HOOP_KEY: "{{ hoop_key }}"

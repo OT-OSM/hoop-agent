@@ -9,9 +9,17 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
-- name: Create Hoop Agent
+- name: Check if Hoop Agent already exists
+  ansible.builtin.shell: |
+    hoop admin list agents | grep -w {{ inventory_hostname }}
+  register: agent_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Hoop Agent if it does not exist
   ansible.builtin.shell: |
     hoop admin create agent {{ inventory_hostname }}
+  when: agent_check.rc != 0
   register: agent_create
 
 - name: Extract HOOP_KEY from agent creation output

@@ -1,0 +1,11 @@
+guardrail_description: "Block SELECT, touch and pwd commands"
+guardrail_name: "block-sensitive-commands"
+guardrail_words:
+  - "SELECT"
+  - "touch"
+  - "pwd"
+connection_ids:
+  - "bf586860-719d-425d-9c49-aa51940eded7"
+
+guardrail_api_url: "https://identity.opstree.dev/api/guardrails"
+hoop_token: ""

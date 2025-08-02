@@ -1,4 +1,13 @@
-- name: Create group in Hoop Identity
+- name: Check if group already exists
+  ansible.builtin.uri:
+    url: "{{ hoop_api_base_url }}/users/groups/{{ hoop_group_name }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ hoop_token }}"
+    status_code: [200, 404]
+  register: group_check_result
+
+- name: Create group in Hoop Identity if it doesn't exist
   ansible.builtin.uri:
     url: "{{ hoop_api_base_url }}/users/groups"
     method: POST
@@ -8,8 +17,11 @@
     body_format: json
     body:
       name: "{{ hoop_group_name }}"
-    status_code: [200, 201]
+    status_code: [200, 201, 409]   
+  when: group_check_result.status == 404
   register: group_creation_result
+  failed_when: group_creation_result.status not in [200, 201, 409]
+  changed_when: group_creation_result.status in [200, 201]
 
 - name: Create user in Hoop Identity
   ansible.builtin.uri:
@@ -17,6 +29,7 @@
     method: POST
     headers:
       Content-Type: "application/json"
+      Authorization: "Bearer {{ hoop_token }}"
     body_format: json
     body:
       email: "{{ hoop_user_email }}"

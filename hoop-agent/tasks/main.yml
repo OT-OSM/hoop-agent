@@ -5,7 +5,7 @@
 
 - name: Configure Hoop CLI
   ansible.builtin.shell: |
-    HOOP_TOKEN="{{ hoop_token }}" hoop config create --api-url https://identity.opstree.dev
+    hoop config create --api-url {{ hoop_api_url }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
@@ -13,23 +13,36 @@
   ansible.builtin.shell: |
     hoop admin create agent {{ inventory_hostname }}
   register: agent_create
+  ignore_errors: yes
 
-- name: Extract HOOP_KEY from agent creation output
+- name: Debug agent creation output
+  ansible.builtin.debug:
+    var: agent_create.stdout_lines
+
+- name: Extract full agent URL
   ansible.builtin.set_fact:
-    hoop_key: "{{ agent_create.stdout_lines | select('search', '^grpc') | list | first }}"
+    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
+  when: agent_create.stdout_lines | length > 0
 
-- name: Create systemd service with HOOP_KEY
+- name: Create systemd service with agent URL
   ansible.builtin.template:
     src: hoop-agent.service.j2
     dest: /etc/systemd/system/hoop-agent.service
-  notify: 
+  notify:
     - Reload systemd
     - Enable and start Hoop agent
+  vars:
+    HOOP_AGENT_URL: "{{ hoop_agent_url }}"
+  when: hoop_agent_url is defined and hoop_agent_url != ''
 
-- name: Create connection using hostname and agent
+- name: Create connection using agent URL
   ansible.builtin.shell: |
-    export HOOP_KEY={{ hoop_key }}
+    export HOOP_AGENT_URL={{ hoop_agent_url }}
     hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} \
-      --tags ldc={{ inventory_hostname }},Name={{ inventory_hostname }},Owner=opstree,Environment=prod -- bash
+      --tags Owner="{{ owner }}",type="{{ project }}" -- bash
+  args:
+    executable: /bin/bash
+
   environment:
-    HOOP_KEY: "{{ hoop_key }}"
+    HOOP_AGENT_URL: "{{ hoop_agent_url }}"
+  when: hoop_agent_url is defined and hoop_agent_url != ''

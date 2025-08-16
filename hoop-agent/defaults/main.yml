@@ -1,5 +1,1 @@
-hoop_agent_name: "{{ ansible_hostname }}-dummy-agent"
-hoop_command: "bash"
-hoop_key: "grpc://_default:xagt-REPLACE_ME@identity.opstree.dev:8010"
-hoop_user: "root"
-hoop_service_name: "hoop-agent"
+hoop_api_url: "https://identity.opstree.dev"

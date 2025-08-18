@@ -11,11 +11,9 @@
 
 - name: Create Hoop Agent
   ansible.builtin.shell: |
-    hoop admin create agent {{ hostvars[inventory_hostname].name }}
+    hoop admin create agent {{ inventory_hostname }}
   register: agent_create
   ignore_errors: yes
-  environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
 
 - name: Debug agent creation output
   ansible.builtin.debug:
@@ -37,12 +35,20 @@
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''
 
+# - name: Create connection using agent URL
+#   ansible.builtin.shell: |
+#     export HOOP_AGENT_URL={{ hoop_agent_url }}
+#     hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} \
+#       --tags Owner=Abhishek,type=k8s -- bash
+
 - name: Create connection using agent URL
   ansible.builtin.shell: |
-    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ inventory_hostname }} -- bash
+    export HOOP_AGENT_URL={{ hoop_agent_url }}
+    hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} \
+      --tags Owner="{{ owner }}",type="{{ project }}" -- bash
   args:
     executable: /bin/bash
+
   environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''

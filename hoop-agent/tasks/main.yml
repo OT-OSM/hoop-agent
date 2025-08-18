@@ -34,13 +34,7 @@
   vars:
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''
-
-# - name: Create connection using agent URL
-#   ansible.builtin.shell: |
-#     export HOOP_AGENT_URL={{ hoop_agent_url }}
-#     hoop admin create connection {{ inventory_hostname }} -a {{ inventory_hostname }} \
-#       --tags Owner=Abhishek,type=k8s -- bash
-
+  
 - name: Create connection using agent URL
   ansible.builtin.shell: |
     export HOOP_AGENT_URL={{ hoop_agent_url }}

@@ -17,6 +17,7 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
+
 - name: Debug agent creation output
   ansible.builtin.debug:
     var: agent_create.stdout_lines

@@ -1,0 +1,17 @@
+[Unit]
+Description=Hoop Agent Service
+After=network.target
+
+[Service]
+Type=simple
+Environment="HOOP_KEY={{ hoop_agent_url }}"
+ExecStart=/usr/local/bin/hoop start agent
+Restart=on-failure
+User=root
+WorkingDirectory=/root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

@@ -11,7 +11,7 @@
 
 - name: Create Hoop Agent
   ansible.builtin.shell: |
-    hoop admin create agent {{ hostvars[inventory_hostname].name }}
+    hoop admin create agent test1
   register: agent_create
   ignore_errors: yes
   environment:

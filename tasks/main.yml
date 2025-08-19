@@ -1,1 +1,49 @@
+- name: Install Hoop CLI
+  ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
+  args:
+    creates: /usr/local/bin/hoop
+
+- name: Configure Hoop CLI
+  ansible.builtin.shell: |
+    hoop config create --api-url {{ hoop_api_url }}
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+
+- name: Create Hoop Agent
+  ansible.builtin.shell: |
+    hoop admin create agent {{ hostvars[inventory_hostname].name }}
+  register: agent_create
+  ignore_errors: yes
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+
+- name: Debug agent creation output
+  ansible.builtin.debug:
+    var: agent_create.stdout_lines
+
+- name: Extract full agent URL
+  ansible.builtin.set_fact:
+    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
+  when: agent_create.stdout_lines | length > 0
+
+- name: Create systemd service with agent URL
+  ansible.builtin.template:
+    src: hoop-agent.service.j2
+    dest: /etc/systemd/system/hoop-agent.service
+  notify:
+    - Reload systemd
+    - Enable and start Hoop agent
+  vars:
+    HOOP_AGENT_URL: "{{ hoop_agent_url }}"
+  when: hoop_agent_url is defined and hoop_agent_url != ''
+
+- name: Create connection using agent URL
+  ansible.builtin.shell: |
+    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ inventory_hostname }} -- bash
+  args:
+    executable: /bin/bash
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+    HOOP_AGENT_URL: "{{ hoop_agent_url }}"
+  when: hoop_agent_url is defined and hoop_agent_url != ''
 

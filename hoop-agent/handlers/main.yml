@@ -1,9 +1,0 @@
-- name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: yes
-
-- name: Enable and start Hoop agent
-  ansible.builtin.systemd:
-    name: hoop-agent.service
-    enabled: true
-    state: restarted

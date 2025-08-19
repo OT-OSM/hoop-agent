@@ -3,19 +3,15 @@
   args:
     creates: /usr/local/bin/hoop
 
-- name: Configure Hoop CLI
+- name: Configure Hoop CLI with token
   ansible.builtin.shell: |
-    hoop config create --api-url {{ hoop_api_url }}
-  environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
+    hoop config create --api-url {{ hoop_api_url }} --token {{ hoop_token }}
 
 - name: Create Hoop Agent
   ansible.builtin.shell: |
     hoop admin create agent {{ hostvars[inventory_hostname].name }}
   register: agent_create
   ignore_errors: yes
-  environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
 
 - name: Debug agent creation output
   ansible.builtin.debug:
@@ -43,6 +39,5 @@
   args:
     executable: /bin/bash
   environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''

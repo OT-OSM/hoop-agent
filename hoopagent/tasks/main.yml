@@ -1,3 +1,4 @@
+---
 - name: Install Hoop CLI
   ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
   args:
@@ -9,13 +10,27 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
-- name: Create Hoop Agent
+- name: Check if Hoop Agent exists
   ansible.builtin.shell: |
-    hoop admin create agent {{ hostvars[inventory_hostname].name }}
-  register: agent_create
+    hoop admin list agents | grep -w {{ hostvars[inventory_hostname].name }}
+  register: agent_check
   ignore_errors: yes
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
+
+- name: Create Hoop Agent if not exists
+  ansible.builtin.shell: |
+    hoop admin create agent {{ hostvars[inventory_hostname].name }}
+  register: agent_create
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+  when: agent_check.rc != 0
+
+- name: Use dummy agent output if agent already exists
+  ansible.builtin.set_fact:
+    agent_create: 
+      stdout_lines: ["grpc://{{ hostvars[inventory_hostname].name }}:dummy@identity.opstree.dev:8010?mode=standard"]
+  when: agent_check.rc == 0
 
 - name: Debug agent creation output
   ansible.builtin.debug:
@@ -25,11 +40,6 @@
   ansible.builtin.set_fact:
     hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
   when: agent_create.stdout_lines | length > 0
-
-- name: Extract agent name from agent URL
-  ansible.builtin.set_fact:
-    hoop_agent_name: "{{ hoop_agent_url.split('://')[1].split(':')[0] }}"
-  when: hoop_agent_url is defined and hoop_agent_url != ''
 
 - name: Create systemd service with agent URL
   ansible.builtin.template:
@@ -42,6 +52,15 @@
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''
 
+- name: Check if connection exists
+  ansible.builtin.shell: |
+    hoop admin list connections | grep -w {{ hostvars[inventory_hostname].name }}
+  register: connection_check
+  ignore_errors: yes
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+    HOOP_AGENT_URL: "{{ hoop_agent_url }}"
+
 - name: Create connection using host name as agent name
   ansible.builtin.shell: |
     hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ hostvars[inventory_hostname].name }} -- bash
@@ -50,5 +69,4 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
-  when: hoop_agent_url is defined and hoop_agent_url != ''
-
+  when: connection_check.rc != 0 and hoop_agent_url is defined and hoop_agent_url != ''

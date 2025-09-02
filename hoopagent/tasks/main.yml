@@ -39,7 +39,7 @@
 
 - name: Create connection using agent URL
   ansible.builtin.shell: |
-    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ inventory_hostname }} -- bash
+    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ hostvars[inventory_hostname].name }} -- bash
   args:
     executable: /bin/bash
   environment:

@@ -26,6 +26,11 @@
     hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
   when: agent_create.stdout_lines | length > 0
 
+- name: Extract agent name from agent URL
+  ansible.builtin.set_fact:
+    hoop_agent_name: "{{ hoop_agent_url.split('://')[1].split(':')[0] }}"
+  when: hoop_agent_url is defined and hoop_agent_url != ''
+
 - name: Create systemd service with agent URL
   ansible.builtin.template:
     src: hoop-agent.service.j2
@@ -37,12 +42,12 @@
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
   when: hoop_agent_url is defined and hoop_agent_url != ''
 
-- name: Create connection using agent URL
+- name: Create connection using agent name
   ansible.builtin.shell: |
-    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ hostvars[inventory_hostname].name }} -- bash
+    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ hoop_agent_name }} -- bash
   args:
     executable: /bin/bash
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
-  when: hoop_agent_url is defined and hoop_agent_url != ''
+  when: hoop_agent_name is defined and hoop_agent_name != ''

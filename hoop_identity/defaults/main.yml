@@ -6,4 +6,4 @@ hoop_user_name: "pritam"
 hoop_user_password: "mysecurepassword"
 hoop_user_groups:
   - "coe-team"
-hoop_token: ""
+hoop_token: ${{ secrets.HOOP_TOKEN }}"

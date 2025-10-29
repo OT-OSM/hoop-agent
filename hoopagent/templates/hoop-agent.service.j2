@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 Environment="HOOP_KEY={{ hoop_agent_url }}"
-ExecStart=ExecStart=/usr/local/bin/hoop agent run --url={{ HOOP_AGENT_URL }}
+ExecStart=ExecStart=/usr/local/bin/hoop start agent
 Restart=on-failure
 User=opstree
 Group=opstree

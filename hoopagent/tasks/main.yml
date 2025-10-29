@@ -26,6 +26,21 @@
     hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
   when: agent_create.stdout_lines | length > 0
 
+- name: Ensure opstree owns hoop binary
+  ansible.builtin.file:
+    path: /usr/local/bin/hoop
+    owner: opstree
+    group: opstree
+    mode: '0755'
+
+- name: Create hoop config dir for opstree
+  ansible.builtin.file:
+    path: /home/opstree/.hoop
+    state: directory
+    owner: opstree
+    group: opstree
+    mode: '0755'
+
 - name: Create systemd service with agent URL
   ansible.builtin.template:
     src: hoop-agent.service.j2

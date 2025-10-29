@@ -21,10 +21,44 @@
   ansible.builtin.debug:
     var: agent_create.stdout_lines
 
-- name: Extract full agent URL
+#- name: Extract full agent URL
+#  ansible.builtin.set_fact:
+#    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
+#  when: agent_create.stdout_lines | length > 0
+
+# --- START: New/Modified Logic for Agent URL Retrieval ---
+
+- name: Extract grpc URL when newly created
   ansible.builtin.set_fact:
-    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
-  when: agent_create.stdout_lines | length > 0
+    # Use regex_search to find the grpc URL in the output
+    hoop_agent_url: "{{ agent_create.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') }}"
+  # Check if creation was successful and the output contains 'grpc://'
+  when: agent_create.rc == 0 and agent_create.stdout is search('grpc://')
+  # Initialize hoop_agent_url as an empty string if the condition is false
+  vars:
+    hoop_agent_url: ""
+
+- name: Fetch grpc URL if agent already exists or creation failed
+  ansible.builtin.shell: |
+    # Use 'hoop admin get agent' to retrieve details, including the key
+    hoop admin get agent {{ hostvars[inventory_hostname].name }} --show-key
+  register: agent_existing
+  ignore_errors: yes
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+  # Only run this if the hoop_agent_url was NOT set by the creation step 
+  # (i.e., agent creation failed or didn't output the URL)
+  when: hoop_agent_url is not defined or hoop_agent_url == ''
+
+- name: Extract grpc URL from existing agent
+  ansible.builtin.set_fact:
+    # Use regex_search to find the grpc URL in the existing agent's output
+    hoop_agent_url: "{{ agent_existing.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') }}"
+  # Only run if the existing agent fetch was successful AND the output contains 'grpc://'
+  when: agent_existing is defined and agent_existing.rc == 0 and agent_existing.stdout is search('grpc://')
+
+# --- END: New/Modified Logic for Agent URL Retrieval ---
+
 
 - name: Ensure opstree owns hoop binary
   ansible.builtin.file:

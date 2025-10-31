@@ -3,7 +3,7 @@
   args:
     creates: /usr/local/bin/hoop
 
-- name: Ensure jq is installed for JSON parsing 👈 (NEW TASK 1: Install jq)
+- name: Ensure jq is installed for JSON parsing
   ansible.builtin.package:
     name: jq
     state: present

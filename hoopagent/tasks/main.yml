@@ -3,6 +3,11 @@
   args:
     creates: /usr/local/bin/hoop
 
+- name: Ensure jq is installed for JSON parsing 👈 (NEW TASK 1: Install jq)
+  ansible.builtin.package:
+    name: jq
+    state: present
+
 - name: Configure Hoop CLI
   ansible.builtin.shell: |
     hoop config create --api-url {{ hoop_api_url }}
@@ -21,10 +26,43 @@
   ansible.builtin.debug:
     var: agent_create.stdout_lines
 
-- name: Extract full agent URL
+#- name: Extract full agent URL
+#  ansible.builtin.set_fact:
+#    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
+#  when: agent_create.stdout_lines | length > 0
+
+
+# --- START: NEW/REVISED LOGIC FOR KEY EXTRACTION ---
+
+- name: Extract grpc URL when newly created
   ansible.builtin.set_fact:
-    hoop_agent_url: "{{ agent_create.stdout_lines[0] }}"
-  when: agent_create.stdout_lines | length > 0
+    # Use regex_search to find the grpc URL in the output
+    hoop_agent_url: "{{ agent_create.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') | first }}"
+  # Only runs if creation was successful (rc=0) AND output contains 'grpc://'
+  when: agent_create.rc == 0 and agent_create.stdout is search('grpc://')
+  # Initialize hoop_agent_url if the condition fails
+  vars:
+    hoop_agent_url: ""
+
+- name: Fetch grpc URL if agent already exists or creation failed 👈 (REVISED TASK 2)
+  ansible.builtin.shell: |
+    # Use -o json and jq to safely retrieve the key from the structured output
+    hoop admin get agent {{ hostvars[inventory_hostname].name }} -o json | jq -r '.key'
+  register: agent_existing
+  # We should only run this if the 'create' task failed to set the key.
+  ignore_errors: yes
+  environment:
+    HOOP_TOKEN: "{{ hoop_token }}"
+  when: hoop_agent_url is not defined or hoop_agent_url == ''
+
+- name: Extract grpc URL from existing agent 👈 (NEW TASK 3: Final extraction)
+  ansible.builtin.set_fact:
+    # The output from the previous task is the raw key/URL string from jq
+    hoop_agent_url: "{{ agent_existing.stdout | default('') }}"
+  # Only run if the 'get' task was successful (rc=0) AND the output contains 'grpc://'
+  when: agent_existing is defined and agent_existing.rc == 0 and 'grpc://' in agent_existing.stdout
+
+# --- END: NEW/REVISED LOGIC FOR KEY EXTRACTION ---
 
 - name: Ensure opstree owns hoop binary
   ansible.builtin.file:

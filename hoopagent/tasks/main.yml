@@ -44,7 +44,7 @@
   vars:
     hoop_agent_url: ""
 
-- name: Fetch grpc URL if agent already exists or creation failed 👈 (REVISED TASK 2)
+- name: Fetch grpc URL if agent already exists or creation failed
   ansible.builtin.shell: |
     # Use -o json and jq to safely retrieve the key from the structured output
     hoop admin get agent {{ hostvars[inventory_hostname].name }} -o json | jq -r '.key'
@@ -55,7 +55,7 @@
     HOOP_TOKEN: "{{ hoop_token }}"
   when: hoop_agent_url is not defined or hoop_agent_url == ''
 
-- name: Extract grpc URL from existing agent 👈 (NEW TASK 3: Final extraction)
+- name: Extract grpc URL from existing agent
   ansible.builtin.set_fact:
     # The output from the previous task is the raw key/URL string from jq
     hoop_agent_url: "{{ agent_existing.stdout | default('') }}"

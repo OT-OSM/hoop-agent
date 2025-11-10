@@ -10,7 +10,6 @@
     HOOP_TOKEN: "{{ hoop_token }}"
 
 - name: Set resource name variable
-  # THIS TASK WAS MISSING FROM YOUR PASTE
   ansible.builtin.set_fact:
     hoop_resource_name: "{{ hostvars[inventory_hostname].name }}"
 

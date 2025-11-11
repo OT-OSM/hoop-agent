@@ -1,54 +1,13 @@
 - name: Install Hoop CLI
   ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
-  #args:
-  #  creates: /usr/local/bin/hoop
+  args:
+    creates: /usr/local/bin/hoop
 
 - name: Configure Hoop CLI
   ansible.builtin.shell: |
     hoop config create --api-url {{ hoop_api_url }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
-
-- name: Set resource name variable
-  ansible.builtin.set_fact:
-    hoop_resource_name: "{{ hostvars[inventory_hostname].name }}"
-
-
-# === CLEANUP PREVIOUS INSTALLATION ===
-- name: Stop and disable existing hoop-agent service
-  ansible.builtin.systemd:
-    name: hoop-agent.service
-    state: stopped
-    enabled: no
-  ignore_errors: yes # Ignore if the service doesn't exist
-
-- name: Remove existing hoop-agent service file
-  ansible.builtin.file:
-    path: /etc/systemd/system/hoop-agent.service
-    state: absent
-
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: yes
-
-- name: Remove existing Hoop connection (from control plane)
-  ansible.builtin.shell: |
-    hoop admin remove connection {{ hoop_resource_name }}
-  environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
-  ignore_errors: yes # Ignore if connection doesn't exist
-
-- name: Remove existing Hoop agent (from control plane)
-  ansible.builtin.shell: |
-    hoop admin remove agent {{ hoop_resource_name }}
-  environment:
-    HOOP_TOKEN: "{{ hoop_token }}"
-  ignore_errors: yes # Ignore if agent doesn't exist
-
-- name: Remove old hoop config directory for opstree
-  ansible.builtin.file:
-    path: /home/opstree/.hoop
-    state: absent
 
 - name: Create Hoop Agent
   ansible.builtin.shell: |

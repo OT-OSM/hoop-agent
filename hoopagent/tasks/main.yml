@@ -9,9 +9,13 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
+- name: Set normalized agent name (lowercase)
+  ansible.builtin.set_fact:
+    normalized_agent_name: "{{ hostvars[inventory_hostname].name | lower }}"
+
 - name: Create Hoop Agent
   ansible.builtin.shell: |
-    hoop admin create agent {{ hostvars[inventory_hostname].name }}
+    hoop admin create agent {{ normalized_agent_name }}
   register: agent_create
   ignore_errors: yes
   environment:
@@ -54,7 +58,7 @@
 
 - name: Create connection using agent URL
   ansible.builtin.shell: |
-    hoop admin create connection {{ hostvars[inventory_hostname].name }} -a {{ hostvars[inventory_hostname].name }} -- bash
+    hoop admin create connection {{ normalized_agent_name }} -a {{ normalized_agent_name }} -- bash
   args:
     executable: /bin/bash
   environment:

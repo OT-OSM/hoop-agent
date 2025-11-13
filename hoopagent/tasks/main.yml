@@ -1,23 +1,8 @@
-# hoopagent/tasks/main.yml
-
-# === PRE-REQUISITES ===
-# We need jq to parse the JSON output if we need to fetch an existing key
-- name: Install jq (Debian/Ubuntu)
-  ansible.builtin.apt:
-    name: jq
-    state: present
-  when: ansible_os_family == "Debian"
-
-- name: Install jq (RHEL/CentOS)
-  ansible.builtin.yum:
-    name: jq
-    state: present
-  when: ansible_os_family == "RedHat"
 
 # === INSTALL CLI ===
 - name: Install Hoop CLI
   ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
-  # args: creates is REMOVED to ensure binary is always available
+  # args: creates REMOVED to ensure binary is present
 
 - name: Configure Hoop CLI
   ansible.builtin.shell: |
@@ -79,33 +64,34 @@
   ansible.builtin.debug:
     var: agent_create.stdout_lines
 
-# --- SMART KEY EXTRACTION (Fixes your 409 Error) ---
+# --- ROBUST KEY EXTRACTION (Regex Only - No jq) ---
 
 - name: Extract grpc URL from NEW creation
   ansible.builtin.set_fact:
-    # Regex looks for a valid grpc:// URL. If not found, it sets an empty string.
+    # Regex looks for grpc:// followed by non-whitespace chars
     hoop_agent_url: "{{ agent_create.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') | first }}"
-  # Only runs if create command succeeded AND output has 'grpc://'
   when: agent_create.rc == 0 and agent_create.stdout is search('grpc://')
 
-- name: Fetch grpc URL if agent ALREADY EXISTS
+- name: Fetch raw agent details if ALREADY EXISTS
   ansible.builtin.shell: |
-    hoop admin get agent {{ hoop_resource_name }} -o json | jq -r '.key'
-  register: agent_existing
+    hoop admin get agent {{ hoop_resource_name }}
+  register: agent_existing_raw
   ignore_errors: yes
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
-  # Run this if the previous step didn't get a URL (e.g. because create failed with 409)
+  # Only run if we don't have the URL yet
   when: hoop_agent_url is not defined or hoop_agent_url == ''
 
-- name: Extract grpc URL from existing agent fetch
+- name: Extract grpc URL from existing agent output
   ansible.builtin.set_fact:
-    hoop_agent_url: "{{ agent_existing.stdout | trim }}"
+    # We search the raw output for the grpc:// pattern. 
+    # This works even if the output is not valid JSON or has color codes.
+    hoop_agent_url: "{{ agent_existing_raw.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') | first }}"
   when: 
     - hoop_agent_url is not defined or hoop_agent_url == ''
-    - agent_existing.rc == 0
+    - agent_existing_raw.rc == 0
 
-# --- END SMART LOGIC ---
+# --- END EXTRACTION ---
 
 - name: Ensure opstree owns hoop binary
   ansible.builtin.file:
@@ -131,7 +117,7 @@
     - Enable and start Hoop agent
   vars:
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
-  # Critical: Only create service if we actually have a valid URL
+  # Only create service if we successfully found a URL
   when: hoop_agent_url is defined and hoop_agent_url != '' and 'failed' not in hoop_agent_url
 
 - name: Create connection using agent URL
@@ -142,6 +128,5 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
     HOOP_AGENT_URL: "{{ hoop_agent_url }}"
-  # Added ignore_errors to handle "Connection already exists"
   ignore_errors: yes
   when: hoop_agent_url is defined and hoop_agent_url != ''

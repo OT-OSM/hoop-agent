@@ -1,5 +1,3 @@
-
-# === PRE-REQUISITES ===
 - name: Install jq (Debian/Ubuntu)
   ansible.builtin.apt:
     name: jq
@@ -15,6 +13,8 @@
 # === INSTALL CLI ===
 - name: Install Hoop CLI
   ansible.builtin.shell: curl -s -L https://releases.hoop.dev/release/install-cli.sh | sh
+  args:
+    creates: /usr/local/bin/hoop
 
 - name: Configure Hoop CLI
   ansible.builtin.shell: |
@@ -22,21 +22,24 @@
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
 
-- name: Set resource name variable
+# === NORMALIZE RESOURCE NAME (LOWERCASE) ===
+- name: Set normalized agent name (lowercase)
   ansible.builtin.set_fact:
-    hoop_resource_name: "{{ hostvars[inventory_hostname].name }}"
+    normalized_agent_name: "{{ hostvars[inventory_hostname].name | lower }}"
+
+- name: Set resource name variable (for backward compatibility)
+  ansible.builtin.set_fact:
+    hoop_resource_name: "{{ normalized_agent_name }}"
 
 # === AGGRESSIVE CLEANUP ===
-# We run this twice and wait, to ensure the backend releases the name.
-
 - name: Remove existing Hoop connection (Attempt 1)
-  ansible.builtin.shell: hoop admin delete connection {{ hoop_resource_name }}
+  ansible.builtin.shell: hoop admin delete connection {{ normalized_agent_name }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
   ignore_errors: yes
 
 - name: Remove existing Hoop agent (Attempt 1)
-  ansible.builtin.shell: hoop admin delete agent {{ hoop_resource_name }}
+  ansible.builtin.shell: hoop admin delete agent {{ normalized_agent_name }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
   ignore_errors: yes
@@ -44,17 +47,14 @@
 - name: Wait for Hoop backend to process deletion
   ansible.builtin.pause:
     seconds: 10
-  # Giving the API time to release the resource name
 
 # === INSTALLATION ===
-
 - name: Create Hoop Agent (with retry)
   ansible.builtin.shell: |
-    hoop admin create agent {{ hoop_resource_name }}
+    hoop admin create agent {{ normalized_agent_name }}
   register: agent_create
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
-  # If it fails (409), we wait 5s and try again, up to 3 times
   retries: 3
   delay: 5
   until: agent_create.rc == 0
@@ -65,17 +65,24 @@
     var: agent_create.stdout_lines
 
 # --- EXTRACTION STRATEGY ---
+- name: Extract full agent URL (simple approach)
+  ansible.builtin.set_fact:
+    hoop_agent_url: "{{ agent_create.stdout_lines[0] | default('') | trim }}"
+  when: agent_create.stdout_lines | length > 0
 
-- name: Extract grpc URL from NEW creation
+# Fallback: Extract grpc URL using regex
+- name: Extract grpc URL from NEW creation (regex fallback)
   ansible.builtin.set_fact:
     hoop_agent_url: "{{ agent_create.stdout | regex_search('grpc://[^\\s\"]+', '\\0') | default('') | first }}"
-  when: agent_create.rc == 0 and agent_create.stdout is search('grpc://')
+  when: 
+    - hoop_agent_url is not defined or hoop_agent_url == ''
+    - agent_create.rc == 0 
+    - agent_create.stdout is search('grpc://')
 
-# Fallback: If create still failed, we try to fetch from the LIST of agents
-# We use 'get agents' (plural) and filter with jq
+# Final fallback: Fetch from agent list
 - name: Fetch grpc URL from agent list (Fallback)
   ansible.builtin.shell: |
-    hoop admin get agents -o json | jq -r '(.items // .)[]? | select(.name == "{{ hoop_resource_name }}") | .key // .url // empty'
+    hoop admin get agents -o json | jq -r '.[] | select(.name == "{{ normalized_agent_name }}") | .key // .url // empty'
   register: agent_existing_list
   ignore_errors: yes
   environment:
@@ -101,7 +108,7 @@
 
 - name: Create hoop config dir for opstree
   ansible.builtin.file:
-    path: /home/opstree/.hoop
+    path: "/home/opstree/.hoop"
     state: directory
     owner: opstree
     group: opstree
@@ -110,7 +117,7 @@
 - name: Create systemd service with agent URL
   ansible.builtin.template:
     src: hoop-agent.service.j2
-    dest: /etc/systemd/system/hoop-agent.service
+    dest: "/etc/systemd/system/hoop-agent.service"
   notify:
     - Reload systemd
     - Enable and start Hoop agent
@@ -120,7 +127,7 @@
 
 - name: Create connection using agent URL
   ansible.builtin.shell: |
-    hoop admin create connection {{ hoop_resource_name }} -a {{ hoop_resource_name }} -- bash
+    hoop admin create connection {{ normalized_agent_name }} -a {{ normalized_agent_name }} -- bash
   args:
     executable: /bin/bash
   environment:

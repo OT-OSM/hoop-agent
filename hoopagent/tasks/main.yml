@@ -30,13 +30,13 @@
 # We run this twice and wait, to ensure the backend releases the name.
 
 - name: Remove existing Hoop connection (Attempt 1)
-  ansible.builtin.shell: hoop admin remove connection {{ hoop_resource_name }}
+  ansible.builtin.shell: hoop admin delete connection {{ hoop_resource_name }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
   ignore_errors: yes
 
 - name: Remove existing Hoop agent (Attempt 1)
-  ansible.builtin.shell: hoop admin remove agent {{ hoop_resource_name }}
+  ansible.builtin.shell: hoop admin delete agent {{ hoop_resource_name }}
   environment:
     HOOP_TOKEN: "{{ hoop_token }}"
   ignore_errors: yes

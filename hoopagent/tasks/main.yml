@@ -75,7 +75,7 @@
 # We use 'get agents' (plural) and filter with jq
 - name: Fetch grpc URL from agent list (Fallback)
   ansible.builtin.shell: |
-    hoop admin get agents -o json | jq -r '.items[]? | select(.name == "{{ hoop_resource_name }}") | .key // .url // empty'
+    hoop admin get agents -o json | jq -r '(.items // .)[]? | select(.name == "{{ hoop_resource_name }}") | .key // .url // empty'
   register: agent_existing_list
   ignore_errors: yes
   environment:

@@ -25,7 +25,7 @@
 # === NORMALIZE RESOURCE NAME (LOWERCASE) ===
 - name: Set normalized agent name (lowercase)
   ansible.builtin.set_fact:
-    normalized_agent_name: "{{ hostvars[inventory_hostname].name | lower }}"
+    normalized_agent_name: "{{ hostvars[inventory_hostname].name | lower | regex_replace('--+', '-') | trim}}"
 
 - name: Set resource name variable (for backward compatibility)
   ansible.builtin.set_fact:

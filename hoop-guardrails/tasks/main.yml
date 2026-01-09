@@ -1,0 +1,30 @@
+- name: Fail if HOOP_API_TOKEN is not set
+  ansible.builtin.fail:
+    msg: "Environment variable HOOP_API_TOKEN is not set"
+  when: guardrail_auth_token == ""
+
+- name: Create Guardrail to block sensitive commands
+  ansible.builtin.uri:
+    url: "{{ guardrail_api_url }}"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ hoop_token }}"
+    body_format: json
+    body:
+      connection_ids: "{{ connection_ids }}"
+      description: "{{ guardrail_description }}"
+      name: "{{ guardrail_name }}"
+      input:
+        rules:
+          - type: "deny_words_list"
+            words: "{{ guardrail_words }}"
+            pattern_regex: ""
+            name: "restrict-sensitive-commands"
+    status_code: 200,201
+    return_content: yes
+  register: guardrail_result
+
+- name: Debug guardrail API response
+  ansible.builtin.debug:
+    var: guardrail_result.json

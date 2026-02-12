@@ -1,0 +1,6 @@
+---
+- name: Deploy Hoop  Agent
+  hosts: all
+  become: true
+  roles:
+    - roles/HoopAgent
